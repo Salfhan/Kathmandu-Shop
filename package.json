@@ -1,0 +1,17 @@
+{
+  "name": "kathmandu-smp-shop-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android Capacitor wrapper for Kathmandu Minecraft SMP E-Shop",
+  "scripts": {
+    "android:init": "cap add android",
+    "android:sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}

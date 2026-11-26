@@ -213,6 +213,19 @@ function App() {
     }
   }
 
+  async function signOut() {
+    try {
+      await auth.signOut();
+      setUser(null);
+      setStaffRole(null);
+      setWalletBalance(0);
+      setWalletTransactions([]);
+      setNotice('You have been signed out.');
+    } catch {
+      setNotice('Sign-out could not complete. Please try again.');
+    }
+  }
+
   async function loadWallet() {
     try { const response = await api.get('/api/wallet'); setWalletBalance(Number(response.data.balance || 0)); setWalletTransactions(response.data.transactions || []); } catch { setWalletBalance(0); }
   }
@@ -460,9 +473,14 @@ function App() {
             </button>
           )}
           {user ? (
-            <span className="signed-user">
-              <UserRound size={15} /> {user.name || user.email || 'Signed in'}
-            </span>
+            <>
+              <span className="signed-user">
+                <UserRound size={15} /> {user.name || user.email || 'Signed in'}
+              </span>
+              <button className="sign-in" onClick={signOut}>
+                Sign out
+              </button>
+            </>
           ) : (
             <button className="sign-in" onClick={signIn}>
               Sign in / Create account <ArrowRight size={15} />

@@ -53,7 +53,7 @@ export const api = {
   if(path==='/api/admin/team/invite-co-owner' || path==='/api/admin/team/invite') {
    const role=path.endsWith('invite-co-owner')?'co-owner':'staff';
    await rpc('shop_assign_team_role',{p_email:String(body.email||'').trim(),p_role:role});
-   return {data:{emailed:false,joinUrl:null}};
+   return {data:{emailed:false,joinUrl:null,message:'The team member must sign in to the shop once before their role can be assigned.'}};
   }
   raise({message:'Unsupported shop request: '+path});
  },

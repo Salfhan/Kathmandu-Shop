@@ -410,7 +410,7 @@ function App() {
     try {
       const response = await api.post('/api/admin/team/invite-co-owner', { email: coOwnerEmail.trim() });
       setCoOwnerEmail('');
-      setNotice(response.data.emailed ? 'Co-Owner invitation sent by email.' : `Share this invite link: ${response.data.joinUrl}`);
+      setNotice(response.data.emailed ? 'Co-Owner invitation sent by email.' : (response.data.message || `Share this invite link: ${response.data.joinUrl}`));
     } catch (error) { setNotice(errorMessage(error, 'Only the Owner can invite a Co-Owner.')); }
   }
 
@@ -425,7 +425,7 @@ function App() {
       setNotice(
         response.data.emailed
           ? 'Moderator invitation sent by email.'
-          : `Share this invite link: ${response.data.joinUrl}`
+          : (response.data.message || `Share this invite link: ${response.data.joinUrl}`)
       );
     } catch (error) {
       setNotice(errorMessage(error, 'Could not invite moderator.'));

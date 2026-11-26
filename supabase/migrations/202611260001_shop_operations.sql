@@ -244,3 +244,36 @@ grant execute on function public.kc_review_topup(uuid,boolean) to authenticated;
 grant execute on function public.shop_create_order(uuid,text,text,integer,text) to authenticated;
 grant execute on function public.shop_update_order_status(uuid,text) to authenticated;
 grant execute on function public.shop_track_order(uuid,text) to anon, authenticated;
+
+
+-- Team role assignment replaces AppDeploy email invitations. The target user
+-- must already have created an account with that email in Supabase Auth.
+create or replace function public.shop_assign_team_role(p_email text, p_role text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_target uuid;
+  v_actor_role text;
+begin
+  select role into v_actor_role from public.shop_team_roles where user_id = v_actor;
+  if v_actor is null then raise exception 'Sign in required'; end if;
+  if p_role = 'co-owner' and v_actor_role <> 'owner' then
+    raise exception 'Only the Owner can appoint a Co-Owner';
+  end if;
+  if p_role = 'staff' and v_actor_role not in ('owner','co-owner','admin') then
+    raise exception 'Admin permission required';
+  end if;
+  if p_role not in ('co-owner','staff') then raise exception 'Invalid team role'; end if;
+  select id into v_target from auth.users where lower(email)=lower(btrim(p_email)) limit 1;
+  if v_target is null then raise exception 'That person must sign in to the shop once before you can assign their role'; end if;
+  insert into public.shop_team_roles(user_id,role) values(v_target,p_role)
+  on conflict(user_id) do update set role=excluded.role;
+  return jsonb_build_object('assigned',true,'role',p_role);
+end;
+$$;
+revoke all on function public.shop_assign_team_role(text,text) from public;
+grant execute on function public.shop_assign_team_role(text,text) to authenticated;

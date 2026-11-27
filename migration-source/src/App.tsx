@@ -119,6 +119,10 @@ function App() {
   const [adminTab, setAdminTab] = useState('orders');
   const [adminOrders, setAdminOrders] = useState<Order[]>([]);
   const [adminProducts, setAdminProducts] = useState<Product[]>([]);
+  const [discountCodes, setDiscountCodes] = useState<any[]>([]);
+  const [discountRedemptions, setDiscountRedemptions] = useState<any[]>([]);
+  const [editingDiscountCode, setEditingDiscountCode] = useState<string | null>(null);
+  const [draftDiscountCode, setDraftDiscountCode] = useState({ code: '', discountPercent: '5', expiresAt: '' });
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [draftProduct, setDraftProduct] = useState({
     name: '',
@@ -329,6 +333,63 @@ function App() {
     }
   }
 
+  async function loadAdminDiscountCodes() {
+    try {
+      const response = await api.get('/api/admin/discount-codes');
+      setDiscountCodes(response.data.items || []);
+      setDiscountRedemptions(response.data.redemptions || []);
+    } catch (error) {
+      setNotice(errorMessage(error, 'Could not load promo codes. Check owner/admin permissions.'));
+    }
+  }
+
+  async function saveDiscountCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload = {
+      code: draftDiscountCode.code.trim().toUpperCase(),
+      discountPercent: Number(draftDiscountCode.discountPercent),
+      expiresAt: draftDiscountCode.expiresAt ? new Date(draftDiscountCode.expiresAt).toISOString() : null,
+    };
+    setBusy(true);
+    try {
+      if (editingDiscountCode) {
+        await api.put(`/api/admin/discount-codes/${encodeURIComponent(editingDiscountCode)}`, payload);
+        setNotice('Promo code updated.');
+      } else {
+        await api.post('/api/admin/discount-codes', payload);
+        setNotice('Promo code created.');
+      }
+      setEditingDiscountCode(null);
+      setDraftDiscountCode({ code: '', discountPercent: '5', expiresAt: '' });
+      await loadAdminDiscountCodes();
+    } catch (error) {
+      setNotice(errorMessage(error, 'Could not save promo code.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleDiscountCode(item: any) {
+    try {
+      await api.put(`/api/admin/discount-codes/${encodeURIComponent(item.code)}`, { isActive: !item.is_active });
+      await loadAdminDiscountCodes();
+      setNotice(item.is_active ? 'Promo code deactivated.' : 'Promo code activated.');
+    } catch (error) {
+      setNotice(errorMessage(error, 'Could not update promo code.'));
+    }
+  }
+
+  async function deleteDiscountCode(item: any) {
+    if (!window.confirm(`Delete ${item.code}? Codes with redemption history cannot be deleted; deactivate them instead.`)) return;
+    try {
+      await api.delete(`/api/admin/discount-codes/${encodeURIComponent(item.code)}`);
+      await loadAdminDiscountCodes();
+      setNotice('Promo code deleted.');
+    } catch (error) {
+      setNotice(errorMessage(error, 'This code may have redemption history. Deactivate it instead.'));
+    }
+  }
+
   async function loadAdminProducts() {
     try {
       const response = await api.get('/api/admin/products');
@@ -436,6 +497,7 @@ function App() {
     if (adminOpen && staffRole) {
       void loadAdminOrders();
       void loadAdminTopups();
+      if (staffRole.role === 'owner' || staffRole.role === 'admin') void loadAdminDiscountCodes();
       if (staffRole.role === 'owner' || staffRole.role === 'co-owner' || staffRole.role === 'admin') void loadAdminProducts();
       if (staffRole.role === 'owner' || staffRole.role === 'co-owner' || staffRole.role === 'admin') void loadTeam();
     }
@@ -916,6 +978,7 @@ function App() {
                 'orders', 'wallet',                  ...(staffRole?.role === 'owner' || staffRole?.role === 'co-owner' || staffRole?.role === 'admin'
                   ? ['products', 'settings', 'team']
                   : []),
+                ...(staffRole?.role === 'owner' || staffRole?.role === 'admin' ? ['promos'] : []),
                 ...(staffRole?.role === 'co-owner' ? ['co-owner'] : []),
               ].map(tab => (
                 <button
@@ -1000,6 +1063,35 @@ function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            {adminTab === 'promos' && (staffRole?.role === 'owner' || staffRole?.role === 'admin') && (
+              <div className="admin-content">
+                <h3>Promo codes</h3>
+                <p className="muted">Owners can create and manage discount codes. Admins can view codes and redemption activity only.</p>
+                {staffRole?.role === 'owner' && (
+                  <>
+                    <h3 className="subhead">{editingDiscountCode ? 'Edit promo code' : 'Create a promo code'}</h3>
+                    <form onSubmit={saveDiscountCode}>
+                      <label>PROMO CODE</label>
+                      <input value={draftDiscountCode.code} onChange={event => setDraftDiscountCode({ ...draftDiscountCode, code: event.target.value.toUpperCase().replace(/\\s/g, '') })} placeholder="e.g. V4XALL5" maxLength={40} disabled={!!editingDiscountCode} required />
+                      <label>DISCOUNT PERCENTAGE</label>
+                      <input type="number" min="1" max="100" step="1" value={draftDiscountCode.discountPercent} onChange={event => setDraftDiscountCode({ ...draftDiscountCode, discountPercent: event.target.value })} required />
+                      <label>EXPIRY (OPTIONAL)</label>
+                      <input type="datetime-local" value={draftDiscountCode.expiresAt} onChange={event => setDraftDiscountCode({ ...draftDiscountCode, expiresAt: event.target.value })} />
+                      <small className="field-help">Leave expiry blank for no expiry. New codes have unlimited uses.</small>
+                      <button className="primary-btn full" disabled={busy}>{busy ? 'Saving…' : editingDiscountCode ? 'Save changes' : 'Create promo code'} <Check size={16} /></button>
+                      {editingDiscountCode && <button type="button" className="text-action full" onClick={() => { setEditingDiscountCode(null); setDraftDiscountCode({ code: '', discountPercent: '5', expiresAt: '' }); }}>Cancel editing</button>}
+                    </form>
+                  </>
+                )}
+                <h3 className="subhead">Codes ({discountCodes.length})</h3>
+                {discountCodes.length === 0 ? <p className="muted">No promo codes have been created yet.</p> : discountCodes.map(item => {
+                  const uses = discountRedemptions.filter(redemption => redemption.code === item.code);
+                  return <div className="admin-order" key={item.code}><div><strong>{item.code} · {item.discount_percent}% off</strong><span>{item.is_active ? 'Active' : 'Inactive'} · {uses.length} redemption{uses.length === 1 ? '' : 's'} · {item.expires_at ? `Expires ${new Date(item.expires_at).toLocaleString()}` : 'No expiry'}</span>{staffRole?.role === 'owner' && <div className="product-admin-actions"><button className="text-action" onClick={() => { setEditingDiscountCode(item.code); setDraftDiscountCode({ code: item.code, discountPercent: String(item.discount_percent), expiresAt: item.expires_at ? new Date(item.expires_at).toISOString().slice(0, 16) : '' }); }}>Edit</button><button className="text-action" onClick={() => void toggleDiscountCode(item)}>{item.is_active ? 'Deactivate' : 'Activate'}</button><button className="text-action danger-action" onClick={() => void deleteDiscountCode(item)}>Delete</button></div>}</div></div>;
+                })}
+                <h3 className="subhead">Recent usage ({discountRedemptions.length})</h3>
+                {discountRedemptions.length === 0 ? <p className="muted">No promo-code redemptions yet.</p> : discountRedemptions.slice(0, 100).map(redemption => <div className="admin-order" key={redemption.id}><div><strong>{redemption.code} · {money(Number(redemption.discount_amount))} saved</strong><span>Customer: {redemption.user_id || 'Guest'} · Order: {redemption.order_id}</span><small>{new Date(redemption.created_at).toLocaleString()}</small></div></div>)}
               </div>
             )}
             {adminTab === 'settings' && (

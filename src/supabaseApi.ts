@@ -31,6 +31,13 @@ export const api = {
    const rows=await result<any[]>(supabase.from('kc_topups').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(100));
    return {data:{items:(rows||[]).map(topupFromDb)}};
   }
+  if(path==='/api/admin/discount-codes') {
+   const [codes,redemptions]=await Promise.all([
+    result<any[]>(supabase.from('shop_discount_codes').select('*').order('created_at',{ascending:false})),
+    result<any[]>(supabase.from('shop_discount_redemptions').select('*').order('created_at',{ascending:false}).limit(100))
+   ]);
+   return {data:{items:codes||[],redemptions:redemptions||[]}};
+  }
   if(path==='/api/admin/products') {
    const rows=await result<any[]>(supabase.from('shop_products').select('*').order('created_at',{ascending:false}).limit(100));
    return {data:{items:(rows||[]).map(productFromDb)}};

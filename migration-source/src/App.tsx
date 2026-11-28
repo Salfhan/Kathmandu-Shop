@@ -990,6 +990,11 @@ function App() {
                 </button>
               ))}
             </div>
+            {staffRole?.role === 'owner' && (
+              <button className="promo-tab-shortcut" onClick={() => setAdminTab('promos')}>
+                PROMO CODES
+              </button>
+            )}
             {adminTab === 'co-owner' && staffRole?.role === 'co-owner' && <div className="admin-content"><h3>Co-Owner Control Desk</h3><p className="muted">You can oversee orders, verify KC wallet top-ups, manage products, update shop settings and invite moderators. Only the Owner can appoint or replace Co-Owners.</p><div className="admin-order"><div><strong>{adminOrders.length} recent orders loaded</strong><span>Review delivery status in the Orders tab.</span></div><button className="text-action" onClick={() => setAdminTab('orders')}>Open orders</button></div><div className="admin-order"><div><strong>{adminTopups.length} pending KC top-ups</strong><span>Verify UTR references before crediting wallets.</span></div><button className="text-action" onClick={() => setAdminTab('wallet')}>Review top-ups</button></div><div className="admin-order"><div><strong>Shop and team controls</strong><span>Products, settings and moderator access are available in their tabs.</span></div><button className="text-action" onClick={() => setAdminTab('team')}>Manage team</button></div></div>}
             {adminTab === 'wallet' && <div className="admin-content"><h3>Pending KC top-ups</h3>{adminTopups.length === 0 ? <p className="muted">No pending top-ups.</p> : adminTopups.map(item => <div className="admin-order" key={item.id}><div><strong>{item.coins} KC · ₹{item.rupees}</strong><span>Customer: {item.userId}</span><span>UTR: {item.utr}</span></div><button className="primary-btn" onClick={() => void approveTopup(item.id)}>Verify & credit</button></div>)}</div>}
             {adminTab === 'orders' && (

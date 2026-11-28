@@ -906,16 +906,23 @@ select:focus {
 }
 .admin-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
   border-bottom: 1px solid #cbd2c5;
+  width: 100%;
 }
 .admin-tabs button {
+  flex: 0 0 auto;
   padding: 12px 15px;
   border: 0;
   background: transparent;
   color: #71806a;
   font: 10px var(--mono);
   text-transform: uppercase;
+}
+.admin-tabs button.active {
+  background: var(--ink);
+  color: var(--lime);
 }
 .admin-tabs button.active {
   background: var(--ink);
@@ -1367,4 +1374,20 @@ select:focus {
     grid-template-columns: 1fr;
     gap: 15px;
   }
+}
+
+
+/* Keep the owner's promo controls easy to find on narrow screens. */
+.promo-tab-shortcut {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 13px 16px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--lime);
+  font: 11px var(--mono);
+  letter-spacing: .08em;
+  text-align: left;
+  cursor: pointer;
 }

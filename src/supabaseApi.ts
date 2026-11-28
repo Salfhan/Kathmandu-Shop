@@ -31,6 +31,13 @@ export const api = {
    const rows=await result<any[]>(supabase.from('kc_topups').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(100));
    return {data:{items:(rows||[]).map(topupFromDb)}};
   }
+  if(path==='/api/admin/discount-codes') {
+   const [codes,redemptions]=await Promise.all([
+    result<any[]>(supabase.from('shop_discount_codes').select('*').order('created_at',{ascending:false})),
+    result<any[]>(supabase.from('shop_discount_redemptions').select('*').order('created_at',{ascending:false}).limit(100))
+   ]);
+   return {data:{items:codes||[],redemptions:redemptions||[]}};
+  }
   if(path==='/api/admin/products') {
    const rows=await result<any[]>(supabase.from('shop_products').select('*').order('created_at',{ascending:false}).limit(100));
    return {data:{items:(rows||[]).map(productFromDb)}};
@@ -46,6 +53,12 @@ export const api = {
  async post(path:string, body:any={}) {
   if(path==='/api/wallet/topups') return {data:await rpc('kc_submit_topup',{p_rupees:Number(body.rupees),p_utr:String(body.utr||'').trim()})};
   if(path==='/api/orders') return {data:await rpc('shop_create_order',{p_product_id:body.productId,p_edition:body.edition,p_minecraft_name:body.minecraftName,p_quantity:Number(body.quantity),p_promo_code:body.promoCode||''})};
+  if(path==='/api/admin/discount-codes') {
+   const {data:user}=await supabase.auth.getUser(); if(!user.user) raise({message:'Sign in required'});
+   const code=String(body.code||'').trim().toUpperCase();
+   const row=await result<any>(supabase.from('shop_discount_codes').insert({code,discount_percent:Number(body.discountPercent),is_active:true,expires_at:body.expiresAt||null,max_uses:null,max_uses_per_user:null,created_by:user.user.id}).select('code').single());
+   return {data:{code:row.code,created:true}};
+  }
   if(path==='/api/admin/products') {
    const row=await result<any>(supabase.from('shop_products').insert({name:body.name,category:body.category,description:body.description,price:Number(body.price),active:body.active!==false}).select('*').single());
    return {data:{id:row.id,created:true}};
@@ -62,6 +75,15 @@ export const api = {
   if(approve) return {data:await rpc('kc_approve_topup',{p_topup_id:approve[1]})};
   const order=path.match(/^\/api\/admin\/orders\/([^/]+)$/);
   if(order) return {data:await rpc('shop_update_order_status',{p_order_id:order[1],p_status:body.status})};
+  const discount=path.match(/^\/api\/admin\/discount-codes\/([^/]+)$/);
+  if(discount) {
+   const patch:any={};
+   if(body.discountPercent!==undefined) patch.discount_percent=Number(body.discountPercent);
+   if(body.expiresAt!==undefined) patch.expires_at=body.expiresAt;
+   if(body.isActive!==undefined) patch.is_active=!!body.isActive;
+   const row=await result<any>(supabase.from('shop_discount_codes').update(patch).eq('code',decodeURIComponent(discount[1])).select('code').maybeSingle());
+   if(!row) raise({message:'Promo code not found.'}); return {data:{updated:true}};
+  }
   const product=path.match(/^\/api\/admin\/products\/([^/]+)$/);
   if(product) {
    const patch:any={}; for(const k of ['name','category','description','price','active']) if(body[k]!==undefined) patch[k]=body[k];
@@ -81,6 +103,8 @@ export const api = {
   raise({message:'Unsupported shop request: '+path});
  },
  async delete(path:string) {
+  const discount=path.match(/^\/api\/admin\/discount-codes\/([^/]+)$/);
+  if(discount) { await result<any>(supabase.from('shop_discount_codes').delete().eq('code',decodeURIComponent(discount[1]))); return {data:{deleted:true}}; }
   const product=path.match(/^\/api\/admin\/products\/([^/]+)$/);
   if(product) { await result<any>(supabase.from('shop_products').delete().eq('id',product[1])); return {data:{deleted:true}}; }
   raise({message:'Unsupported shop request: '+path});

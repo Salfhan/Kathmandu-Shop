@@ -1375,3 +1375,19 @@ select:focus {
     gap: 15px;
   }
 }
+
+
+/* Keep the owner's promo controls easy to find on narrow screens. */
+.promo-tab-shortcut {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 13px 16px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--lime);
+  font: 11px var(--mono);
+  letter-spacing: .08em;
+  text-align: left;
+  cursor: pointer;
+}

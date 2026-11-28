@@ -906,16 +906,23 @@ select:focus {
 }
 .admin-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
   border-bottom: 1px solid #cbd2c5;
+  width: 100%;
 }
 .admin-tabs button {
+  flex: 0 0 auto;
   padding: 12px 15px;
   border: 0;
   background: transparent;
   color: #71806a;
   font: 10px var(--mono);
   text-transform: uppercase;
+}
+.admin-tabs button.active {
+  background: var(--ink);
+  color: var(--lime);
 }
 .admin-tabs button.active {
   background: var(--ink);
